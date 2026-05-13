@@ -636,7 +636,7 @@
     <div id="configWA" style="display:none;margin-bottom:12px;">
       <div class="field">
         <label>Número WhatsApp (com DDD e código do país)</label>
-        <input type="text" id="waNumber" placeholder="Ex: 5585999991234" inputmode="numeric">
+        <input type="tel" id="waNumber" placeholder="Ex: 5585999991234" autocomplete="tel">
       </div>
     </div>
 
@@ -700,7 +700,7 @@
 
     <div class="notif-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
       <label style="color:var(--muted);font-size:12px;">WhatsApp (deixe em branco para usar o global)</label>
-      <input type="text" id="notifWA" placeholder="5585999991234" inputmode="numeric" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;">
+      <input type="tel" id="notifWA" placeholder="5585999991234" autocomplete="tel" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;">
     </div>
     <div class="notif-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
       <label style="color:var(--muted);font-size:12px;">E-mail (deixe em branco para usar o global)</label>
@@ -744,7 +744,7 @@ function salvar() {
 
 function salvarConfigs() {
   const diasPadrao = parseInt(document.getElementById('diasPadrao').value) || 3;
-  const waNumber   = document.getElementById('waNumber').value.trim();
+  const waNumber   = document.getElementById('waNumber').value.replace(/[^0-9]/g, '');
   const emailAddr  = document.getElementById('emailAddr').value.trim();
   const waOn       = document.getElementById('toggleWA').classList.contains('on');
   const emailOn    = document.getElementById('toggleEmail').classList.contains('on');
@@ -1051,7 +1051,7 @@ function salvarNotifProduto() {
   const p = produtos.find(x => x.id === notifEditId);
   if (!p) return;
   const dias  = parseInt(document.getElementById('notifDias').value) || 2;
-  const wa    = document.getElementById('notifWA').value.trim();
+  const wa    = document.getElementById('notifWA').value.replace(/[^0-9]/g, '');
   const email = document.getElementById('notifEmail').value.trim();
   p.notif = { dias, wa: wa || null, email: email || null };
   salvar();
@@ -1132,7 +1132,8 @@ function enviarNotificacoes() {
 
   let enviou = false;
 
-  waDestinos.forEach(num => {
+  waDestinos.forEach(rawNum => {
+    const num = rawNum.replace(/[^0-9]/g, '');
     const url = `https://wa.me/${num}?text=${encodeURIComponent(texto)}`;
     window.open(url, '_blank');
     enviou = true;
