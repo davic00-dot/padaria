@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Padaria — Validades</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161b24;
+    --surface2: #1e2736;
+    --border: #2a3548;
+    --accent: #f5a623;
+    --accent2: #0099ff;
+    --warn: #ff6b35;
+    --danger: #ff3b5c;
+    --text: #e8edf5;
+    --muted: #6b7a96;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1a1205 0%, #0d0f14 100%);
+    border-bottom: 1px solid #3a2a0a;
+    padding: 16px 20px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-icon {
+    width: 38px; height: 38px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .header p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .header-count {
+    margin-left: auto;
+    background: var(--accent);
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 8px;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 12px 13px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    background: none;
+    border-top: none; border-left: none; border-right: none;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* SECTIONS */
+  .section { display: none; padding: 16px; }
+  .section.active { display: block; }
+
+  /* FORM */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .form-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .form-card h3::before {
+    content: '';
+    width: 3px; height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field input::placeholder, .field textarea::placeholder { color: var(--muted); font-size: 13px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  /* BARCODE */
+  .barcode-row { display: flex; gap: 8px; align-items: flex-end; }
+  .barcode-row .field { flex: 1; margin-bottom: 0; }
+  .scan-btn {
+    height: 44px; padding: 0 14px;
+    background: var(--accent2);
+    border: none; border-radius: var(--radius-sm);
+    color: #fff; font-size: 20px; cursor: pointer;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.2s;
+  }
+  .scan-btn:active { opacity: 0.8; }
+
+  /* CAMERA MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 1000;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .camera-wrap { position: relative; width: 100%; max-width: 420px; }
+  #video { width: 100%; border-radius: 12px; display: block; background: #000; }
+  .scan-frame {
+    position: absolute; inset: 20%;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  }
+  .scan-line {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--accent); opacity: 0.8;
+    animation: scanMove 2s linear infinite;
+  }
+  @keyframes scanMove { 0%{top:0} 50%{top:calc(100% - 2px)} 100%{top:0} }
+  .scan-hint { color: var(--text); font-family:'Syne',sans-serif; font-size:14px; text-align:center; margin-top:20px; padding:0 20px; }
+  .scan-hint small { color:var(--muted); font-size:12px; display:block; margin-top:4px; }
+  .modal-actions { display:flex; gap:12px; margin-top:20px; padding:0 20px; }
+  .modal-btn { flex:1; padding:14px; border-radius:var(--radius-sm); font-family:'Syne',sans-serif; font-weight:700; font-size:14px; cursor:pointer; border:none; transition:opacity 0.2s; }
+  .modal-btn.cancel { background:var(--surface2); color:var(--text); }
+  .modal-btn.manual { background:var(--accent); color:#000; }
+
+  /* TIPO VALIDADE */
+  .tipo-toggle { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:14px; }
+  .tipo-btn {
+    padding:10px; border-radius:var(--radius-sm);
+    font-family:'Syne',sans-serif; font-size:12px; font-weight:700;
+    cursor:pointer; border:1px solid var(--border);
+    background:var(--bg); color:var(--muted);
+    transition:all 0.2s; text-align:center;
+  }
+  .tipo-btn.active { background:var(--accent); border-color:var(--accent); color:#000; }
+  .validity-section { display:none; }
+  .validity-section.active { display:block; }
+
+  /* ADD BTN */
+  .add-btn {
+    width:100%; padding:15px;
+    background:var(--accent); border:none; border-radius:var(--radius);
+    color:#000; font-family:'Syne',sans-serif; font-weight:800; font-size:16px;
+    cursor:pointer; margin-top:4px; letter-spacing:0.3px;
+    transition:opacity 0.15s, transform 0.1s;
+  }
+  .add-btn:active { opacity:0.85; transform:scale(0.99); }
+
+  /* SUMMARY */
+  .summary-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .sum-item { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px; text-align:center; }
+  .sum-item .num { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; margin-bottom:2px; }
+  .sum-item .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+  .sum-item.danger .num { color:var(--danger); }
+  .sum-item.warn .num { color:var(--warn); }
+  .sum-item.ok .num { color:var(--accent); }
+
+  /* LIST CONTROLS */
+  .list-controls { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
+  .list-controls input {
+    flex:1; min-width:120px;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--text); border-radius:var(--radius-sm);
+    padding:10px 12px; font-family:'DM Mono',monospace; font-size:13px; outline:none;
+  }
+  .list-controls input:focus { border-color:var(--accent); }
+
+  .sort-row { display:flex; gap:6px; margin-bottom:10px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+  .sort-row::-webkit-scrollbar { display:none; }
+  .sort-chip {
+    padding:6px 12px; border-radius:20px;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--muted); font-family:'DM Mono',monospace; font-size:11px;
+    cursor:pointer; white-space:nowrap; transition:all 0.15s;
+  }
+  .sort-chip.active { background:var(--surface2); color:var(--text); border-color:var(--accent2); }
+
+  .select-all-row {
+    display:flex; align-items:center; gap:10px; margin-bottom:10px;
+    padding:10px 14px; background:var(--surface);
+    border-radius:var(--radius-sm); border:1px solid var(--border);
+  }
+  .select-all-row span { font-family:'Syne',sans-serif; font-size:12px; font-weight:600; color:var(--muted); flex:1; }
+  .select-all-row .sel-count { font-size:12px; color:var(--accent); }
+
+  /* PRODUCT CARD */
+  .product-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:14px; margin-bottom:8px;
+    position:relative; transition:border-color 0.2s;
+  }
+  .product-card.selected { border-color:var(--accent); background:rgba(245,166,35,0.05); }
+  .product-card.vencido { border-left:3px solid var(--danger); }
+  .product-card.critico { border-left:3px solid var(--warn); }
+  .product-card.ok { border-left:3px solid var(--accent); }
+
+  .card-header { display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }
+  .card-check {
+    width:22px; height:22px; border:2px solid var(--border); border-radius:6px;
+    flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all 0.15s; margin-top:2px; background:var(--bg);
+  }
+  .product-card.selected .card-check { background:var(--accent); border-color:var(--accent); }
+  .card-check::after { content:'✓'; color:#000; font-size:13px; font-weight:700; display:none; }
+  .product-card.selected .card-check::after { display:block; }
+
+  .card-info { flex:1; min-width:0; }
+  .card-name { font-family:'Syne',sans-serif; font-weight:700; font-size:15px; color:var(--text); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card-ean { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .card-actions { display:flex; gap:4px; flex-shrink:0; }
+  .card-btn {
+    background:none; border:none; color:var(--muted);
+    font-size:16px; cursor:pointer; padding:2px 5px; line-height:1;
+    flex-shrink:0; transition:color 0.2s; border-radius:4px;
+  }
+  .card-btn:active { color:var(--accent); }
+  .card-btn.del:active { color:var(--danger); }
+
+  .card-stats { display:grid; grid-template-columns:1fr 1fr 80px; gap:6px; margin-top:8px; }
+  .stat-box { background:var(--bg); border-radius:8px; padding:8px 10px; }
+  .stat-box .label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px; }
+  .stat-box .value { font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--text); }
+  .stat-box .value.danger { color:var(--danger); }
+  .stat-box .value.warn { color:var(--warn); }
+  .stat-box .value.ok { color:var(--accent); }
+
+  .qty-input {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); border-radius:6px; padding:4px 8px;
+    font-family:'Syne',sans-serif; font-weight:700; font-size:14px;
+    outline:none; text-align:center; -moz-appearance:textfield;
+  }
+  .qty-input::-webkit-outer-spin-button, .qty-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .qty-input:focus { border-color:var(--accent2); }
+
+  /* NOTIF badge */
+  .notif-badge {
+    display:inline-block;
+    background:rgba(245,166,35,0.15);
+    color:var(--accent);
+    border:1px solid rgba(245,166,35,0.3);
+    border-radius:20px;
+    font-size:10px;
+    padding:2px 8px;
+    margin-top:4px;
+    font-family:'DM Mono',monospace;
+  }
+
+  /* EMPTY */
+  .empty { text-align:center; padding:50px 20px; color:var(--muted); }
+  .empty .emoji { font-size:48px; display:block; margin-bottom:12px; }
+  .empty p { font-family:'Syne',sans-serif; font-weight:600; font-size:15px; margin-bottom:6px; color:var(--text); }
+  .empty small { font-size:12px; }
+
+  /* EXPORT */
+  .export-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px; }
+  .export-card h3 { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .export-info { background:var(--bg); border-radius:8px; padding:10px 12px; font-size:12px; color:var(--muted); margin-bottom:14px; line-height:1.6; }
+  .export-info strong { color:var(--accent); }
+  .export-btns { display:grid; gap:10px; }
+  .exp-btn {
+    display:flex; align-items:center; gap:12px; padding:16px;
+    border-radius:var(--radius-sm); border:1px solid var(--border);
+    background:var(--bg); cursor:pointer; transition:all 0.2s; color:var(--text);
+  }
+  .exp-btn:active { opacity:0.8; transform:scale(0.99); }
+  .exp-btn .icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .exp-btn.excel .icon { background:rgba(0,200,100,0.15); }
+  .exp-btn.whatsapp .icon { background:rgba(37,211,102,0.15); }
+  .exp-btn .desc { text-align:left; }
+  .exp-btn .desc strong { display:block; font-family:'Syne',sans-serif; font-weight:700; font-size:14px; margin-bottom:2px; }
+  .exp-btn .desc small { font-size:11px; color:var(--muted); }
+
+  /* SETTINGS */
+  .settings-section { margin-bottom:16px; }
+  .settings-section h3 { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .settings-section h3::before { content:''; width:3px; height:14px; background:var(--accent); border-radius:2px; }
+  .setting-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px; background:var(--surface);
+    border:1px solid var(--border); border-radius:var(--radius-sm);
+    margin-bottom:8px;
+  }
+  .setting-row .s-info { flex:1; }
+  .setting-row .s-label { font-family:'Syne',sans-serif; font-weight:600; font-size:13px; color:var(--text); }
+  .setting-row .s-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+  .toggle {
+    width:44px; height:24px; background:var(--border);
+    border-radius:12px; cursor:pointer; position:relative;
+    transition:background 0.2s; flex-shrink:0; border:none;
+  }
+  .toggle.on { background:var(--accent); }
+  .toggle::after {
+    content:''; position:absolute; top:2px; left:2px;
+    width:20px; height:20px; background:#fff; border-radius:50%;
+    transition:transform 0.2s;
+  }
+  .toggle.on::after { transform:translateX(20px); }
+
+  .action-btn {
+    padding:11px 16px; border-radius:var(--radius-sm);
+    font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
+    cursor:pointer; border:1px solid var(--border);
+    background:var(--bg); color:var(--text);
+    transition:all 0.2s; width:100%; margin-bottom:8px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .action-btn:active { opacity:0.8; }
+  .action-btn.primary { background:var(--accent); border-color:var(--accent); color:#000; }
+  .action-btn.danger-btn { border-color:var(--danger); color:var(--danger); }
+
+  /* NOTIF CONFIG MODAL */
+  .notif-modal {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.85); z-index:2000;
+    align-items:flex-end; justify-content:center;
+  }
+  .notif-modal.open { display:flex; }
+  .notif-sheet {
+    background:var(--surface); border-radius:20px 20px 0 0;
+    padding:20px; width:100%; max-width:500px;
+    max-height:85vh; overflow-y:auto;
+  }
+  .notif-sheet h3 { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:var(--text); margin-bottom:4px; }
+  .notif-sheet .prod-name { font-size:12px; color:var(--accent); margin-bottom:16px; }
+  .notif-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .notif-row label { font-size:12px; color:var(--muted); flex:1; }
+  .notif-row input[type=number] {
+    width:70px; background:var(--bg); border:1px solid var(--border);
+    color:var(--text); border-radius:var(--radius-sm); padding:8px 10px;
+    font-family:'DM Mono',monospace; font-size:14px; outline:none; text-align:center;
+  }
+  .notif-row input[type=number]:focus { border-color:var(--accent); }
+  .notif-row input[type=text], .notif-row input[type=email] {
+    flex:1; background:var(--bg); border:1px solid var(--border);
+    color:var(--text); border-radius:var(--radius-sm); padding:8px 12px;
+    font-family:'DM Mono',monospace; font-size:13px; outline:none;
+  }
+  .notif-row input[type=text]:focus, .notif-row input[type=email]:focus { border-color:var(--accent); }
+  .notif-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+  .notif-save { background:var(--accent); border:none; border-radius:var(--radius-sm); padding:14px; font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:#000; cursor:pointer; }
+  .notif-cancel { background:var(--surface2); border:none; border-radius:var(--radius-sm); padding:14px; font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--text); cursor:pointer; }
+
+  /* TOAST */
+  .toast {
+    position:fixed; bottom:30px; left:50%;
+    transform:translateX(-50%) translateY(100px);
+    background:var(--accent); color:#000;
+    padding:12px 22px; border-radius:30px;
+    font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
+    z-index:9999; transition:transform 0.3s ease;
+    white-space:nowrap; box-shadow:0 8px 32px rgba(245,166,35,0.3);
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  .toast.error { background:var(--danger); box-shadow:0 8px 32px rgba(255,59,92,0.3); color:#fff; }
+  .toast.info { background:var(--accent2); box-shadow:0 8px 32px rgba(0,153,255,0.3); color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🥐</div>
+  <div>
+    <h1>Padaria</h1>
+    <p>Controle de validades</p>
+  </div>
+  <div class="header-count" id="totalCount">0</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('cadastro', this)">➕ Cadastrar</button>
+  <button class="tab" onclick="showTab('lista', this)">📋 Lista</button>
+  <button class="tab" onclick="showTab('exportar', this)">📤 Exportar</button>
+  <button class="tab" onclick="showTab('configuracoes', this)">⚙️ Config</button>
+</div>
+
+<!-- ========== CADASTRAR ========== -->
+<div class="section active" id="tab-cadastro">
+  <div class="form-card">
+    <h3>Produto</h3>
+
+    <div class="field">
+      <label>Nome do Produto</label>
+      <input type="text" id="nomeProduto" placeholder="Ex: Pão de Queijo, Bolo de Cenoura..." autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Código EAN <span style="color:var(--muted);font-size:10px;">(opcional)</span></label>
+      <div class="barcode-row">
+        <div class="field" style="margin-bottom:0;">
+          <input type="text" id="codigoEAN" placeholder="Escaneie ou digite o EAN" inputmode="numeric" autocomplete="off">
+        </div>
+        <button class="scan-btn" onclick="openCamera()" title="Escanear código de barras">📷</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Quantidade <span style="color:var(--muted);font-size:10px;">(opcional)</span></label>
+      <input type="number" id="qtdProduto" placeholder="Ex: 10" min="0" inputmode="numeric" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>Validade</h3>
+
+    <div class="tipo-toggle">
+      <button class="tipo-btn active" id="btnTipoData" onclick="setTipo('data')">📅 Data fixa</button>
+      <button class="tipo-btn" id="btnTipoFab" onclick="setTipo('fabricacao')">🏭 A partir fabricação</button>
+    </div>
+
+    <!-- Data fixa -->
+    <div class="validity-section active" id="secData">
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <button class="tipo-btn active" id="btnDiaCompleto" onclick="setDataMode('completo')" style="font-size:11px;padding:7px 10px;">📅 Dia/Mês/Ano</button>
+        <button class="tipo-btn" id="btnMesAno" onclick="setDataMode('mesano')" style="font-size:11px;padding:7px 10px;">📆 Mês/Ano</button>
+      </div>
+      <div class="row3" id="modoCompleto">
+        <div class="field">
+          <label>Dia</label>
+          <input type="number" id="vencDia" placeholder="DD" min="1" max="31" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Mês</label>
+          <input type="number" id="vencMes" placeholder="MM" min="1" max="12" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Ano</label>
+          <input type="number" id="vencAno" placeholder="AAAA" min="2020" max="2099" inputmode="numeric">
+        </div>
+      </div>
+      <div class="row2" id="modoMesAno" style="display:none;">
+        <div class="field">
+          <label>Mês</label>
+          <input type="number" id="vencMesSo" placeholder="MM" min="1" max="12" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Ano</label>
+          <input type="number" id="vencAnoSo" placeholder="AAAA" min="2020" max="2099" inputmode="numeric">
+        </div>
+      </div>
+      <div id="previewMesAno" style="display:none;margin-top:6px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--accent);">
+        📅 Vence no último dia do mês selecionado
+      </div>
+    </div>
+
+    <!-- A partir da fabricação -->
+    <div class="validity-section" id="secFab">
+      <div class="row2">
+        <div class="field"><label>Fabricação — Dia</label><input type="number" id="fabDia" placeholder="DD" min="1" max="31" inputmode="numeric"></div>
+        <div class="field"><label>Fabricação — Mês</label><input type="number" id="fabMes" placeholder="MM" min="1" max="12" inputmode="numeric"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Fabricação — Ano</label><input type="number" id="fabAno" placeholder="AAAA" min="2020" max="2099" inputmode="numeric"></div>
+        <div class="field"><label>Validade (meses)</label><input type="number" id="mesesVenc" placeholder="Ex: 12" min="1" max="120" inputmode="numeric"></div>
+      </div>
+      <div id="previewVencimento" style="display:none;padding:10px;background:var(--bg);border-radius:8px;margin-top:4px;font-size:13px;color:var(--accent);"></div>
+    </div>
+  </div>
+
+  <button class="add-btn" onclick="adicionarProduto()">＋ Adicionar Produto</button>
+</div>
+
+<!-- ========== LISTA ========== -->
+<div class="section" id="tab-lista">
+  <div class="summary-bar" id="summaryBar">
+    <div class="sum-item danger"><div class="num" id="sumVencido">0</div><div class="lbl">Vencidos</div></div>
+    <div class="sum-item warn"><div class="num" id="sumCritico">0</div><div class="lbl">≤20 dias</div></div>
+    <div class="sum-item ok"><div class="num" id="sumOk">0</div><div class="lbl">Ok</div></div>
+  </div>
+
+  <div class="list-controls">
+    <input type="text" id="searchInput" placeholder="🔍 Buscar produto ou EAN..." oninput="renderLista()">
+  </div>
+
+  <div class="sort-row">
+    <button class="sort-chip active" onclick="setSort('validade')" id="sort-validade">↑ Validade</button>
+    <button class="sort-chip" onclick="setSort('nome')" id="sort-nome">A→Z Nome</button>
+    <button class="sort-chip active" onclick="setFilter('todos')" id="filter-todos">Todos</button>
+    <button class="sort-chip" onclick="setFilter('vencidos')" id="filter-vencidos">🔴 Vencidos</button>
+    <button class="sort-chip" onclick="setFilter('criticos')" id="filter-criticos">🟠 ≤20 dias</button>
+    <button class="sort-chip" onclick="setFilter('ok')" id="filter-ok">🟢 Ok</button>
+  </div>
+
+  <div class="select-all-row">
+    <input type="checkbox" id="checkAll" onchange="toggleAll(this)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">
+    <span>Selecionar todos visíveis</span>
+    <span class="sel-count" id="selCount">0 selecionados</span>
+  </div>
+
+  <div id="productList"></div>
+</div>
+
+<!-- ========== EXPORTAR ========== -->
+<div class="section" id="tab-exportar">
+  <div class="export-card">
+    <h3>📤 Exportar Selecionados</h3>
+    <div class="export-info">
+      Vá até a <strong>Lista</strong>, marque os produtos desejados e volte aqui.<br>
+      <strong id="exportSelCount">0 produto(s)</strong> selecionado(s).
+    </div>
+    <div class="export-btns">
+      <button class="exp-btn excel" onclick="exportarExcel()">
+        <div class="icon">📊</div>
+        <div class="desc"><strong>Exportar Excel (.xlsx)</strong><small>COD | Produto | Validade | Qtd | Faltam</small></div>
+      </button>
+      <button class="exp-btn whatsapp" onclick="exportarWhatsApp()">
+        <div class="icon">💬</div>
+        <div class="desc"><strong>Enviar pelo WhatsApp</strong><small>Tabela formatada em texto</small></div>
+      </button>
+      <button class="exp-btn" onclick="exportarTexto()">
+        <div class="icon" style="background:rgba(107,122,150,0.15);">📄</div>
+        <div class="desc"><strong>Copiar como Texto</strong><small>Copia para área de transferência</small></div>
+      </button>
+    </div>
+  </div>
+  <div class="export-card" style="border-color:var(--border);">
+    <h3 style="color:var(--muted);font-size:12px;">⚙️ Prévia</h3>
+    <pre id="exportPreview" style="font-size:11px;color:var(--muted);white-space:pre-wrap;line-height:1.6;max-height:200px;overflow-y:auto;"></pre>
+  </div>
+</div>
+
+<!-- ========== CONFIGURAÇÕES ========== -->
+<div class="section" id="tab-configuracoes">
+
+  <!-- BACKUP -->
+  <div class="form-card">
+    <h3>💾 Backup de Dados</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">
+      Salve um arquivo JSON com todos os produtos para não perder os dados ao limpar o navegador ou trocar de aparelho.
+    </p>
+    <button class="action-btn primary" onclick="exportarBackup()">
+      <span>⬇️</span> Baixar backup (JSON)
+    </button>
+    <button class="action-btn" onclick="document.getElementById('importFile').click()">
+      <span>⬆️</span> Restaurar backup (JSON)
+    </button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarBackup(this)">
+    <button class="action-btn danger-btn" onclick="limparTudo()">
+      <span>🗑️</span> Apagar todos os dados
+    </button>
+  </div>
+
+  <!-- NOTIFICAÇÕES -->
+  <div class="form-card">
+    <h3>🔔 Notificações Globais</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">
+      Configure onde receber os alertas de vencimento. As notificações por produto são configuradas individualmente na <strong style="color:var(--accent)">Lista</strong> tocando no 🔔 de cada produto.
+    </p>
+
+    <div class="setting-row">
+      <div class="s-info">
+        <div class="s-label">WhatsApp</div>
+        <div class="s-desc">Envia mensagem automática com lista de alertas</div>
+      </div>
+      <button class="toggle" id="toggleWA" onclick="toggleConfig('wa')"></button>
+    </div>
+
+    <div id="configWA" style="display:none;margin-bottom:12px;">
+      <div class="field">
+        <label>Número WhatsApp (com DDD e código do país)</label>
+        <input type="text" id="waNumber" placeholder="Ex: 5585999991234" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="s-info">
+        <div class="s-label">E-mail</div>
+        <div class="s-desc">Abre cliente de e-mail com lista de alertas</div>
+      </div>
+      <button class="toggle" id="toggleEmail" onclick="toggleConfig('email')"></button>
+    </div>
+
+    <div id="configEmail" style="display:none;margin-bottom:12px;">
+      <div class="field">
+        <label>E-mail de destino</label>
+        <input type="email" id="emailAddr" placeholder="Ex: padaria@exemplo.com">
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:8px;">
+      <label>Dias de antecedência padrão para alertas</label>
+      <input type="number" id="diasPadrao" placeholder="Ex: 3" min="1" max="60" inputmode="numeric" value="3">
+    </div>
+
+    <button class="action-btn primary" onclick="salvarConfigs()" style="margin-top:4px;">
+      💾 Salvar configurações
+    </button>
+
+    <button class="action-btn" onclick="enviarNotificacoes()" style="margin-top:0;">
+      📣 Enviar alertas agora
+    </button>
+  </div>
+
+</div>
+
+<!-- CAMERA MODAL -->
+<div class="modal-overlay" id="cameraModal">
+  <div class="camera-wrap">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="scan-frame"><div class="scan-line"></div></div>
+  </div>
+  <p class="scan-hint">
+    Posicione o código de barras no centro do quadro
+    <small>Aproxime a câmera até o código ficar nítido</small>
+  </p>
+  <div class="modal-actions">
+    <button class="modal-btn cancel" onclick="closeCamera()">✕ Cancelar</button>
+    <button class="modal-btn manual" onclick="digitarManual()">✏️ Digitar EAN</button>
+  </div>
+</div>
+
+<!-- NOTIF CONFIG MODAL (por produto) -->
+<div class="notif-modal" id="notifModal">
+  <div class="notif-sheet">
+    <h3>🔔 Notificação</h3>
+    <div class="prod-name" id="notifProdName">—</div>
+
+    <div class="notif-row">
+      <label>Alertar quando faltar (dias):</label>
+      <input type="number" id="notifDias" min="1" max="60" value="2">
+    </div>
+
+    <div class="notif-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <label style="color:var(--muted);font-size:12px;">WhatsApp (deixe em branco para usar o global)</label>
+      <input type="text" id="notifWA" placeholder="5585999991234" inputmode="numeric" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;">
+    </div>
+    <div class="notif-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <label style="color:var(--muted);font-size:12px;">E-mail (deixe em branco para usar o global)</label>
+      <input type="email" id="notifEmail" placeholder="padaria@exemplo.com" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;">
+    </div>
+
+    <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">
+      💡 Os canais (WhatsApp/e-mail) precisam estar ativados nas Configurações. Aqui você apenas personaliza o prazo e destino por produto.
+    </p>
+
+    <div class="notif-actions">
+      <button class="notif-cancel" onclick="closeNotifModal()">Cancelar</button>
+      <button class="notif-save" onclick="salvarNotifProduto()">Salvar</button>
+    </div>
+    <button class="action-btn danger-btn" style="margin-top:10px;" onclick="removerNotifProduto()">🗑 Remover notificação</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== STATE =====================
+let produtos = JSON.parse(localStorage.getItem('padaria_produtos') || '[]');
+let configs  = JSON.parse(localStorage.getItem('padaria_configs')  || '{}');
+let tipoValidade = 'data';
+let dataMode = 'completo';
+let sortMode = 'validade';
+let filterMode = 'todos';
+let videoStream = null;
+let zxingReader = null;
+let notifEditId = null; // id do produto sendo editado na modal de notif
+
+// ===================== UTILS =====================
+function salvar() {
+  localStorage.setItem('padaria_produtos', JSON.stringify(produtos));
+  renderLista();
+  updateSummary();
+  updateExportCount();
+  document.getElementById('totalCount').textContent = produtos.length;
+}
+
+function salvarConfigs() {
+  const diasPadrao = parseInt(document.getElementById('diasPadrao').value) || 3;
+  const waNumber   = document.getElementById('waNumber').value.trim();
+  const emailAddr  = document.getElementById('emailAddr').value.trim();
+  const waOn       = document.getElementById('toggleWA').classList.contains('on');
+  const emailOn    = document.getElementById('toggleEmail').classList.contains('on');
+
+  configs = { diasPadrao, waNumber, emailAddr, waOn, emailOn };
+  localStorage.setItem('padaria_configs', JSON.stringify(configs));
+  toast('✅ Configurações salvas!');
+}
+
+function carregarConfigs() {
+  if (configs.diasPadrao) document.getElementById('diasPadrao').value = configs.diasPadrao;
+  if (configs.waNumber)   document.getElementById('waNumber').value   = configs.waNumber;
+  if (configs.emailAddr)  document.getElementById('emailAddr').value  = configs.emailAddr;
+  if (configs.waOn)    { document.getElementById('toggleWA').classList.add('on');    document.getElementById('configWA').style.display = 'block'; }
+  if (configs.emailOn) { document.getElementById('toggleEmail').classList.add('on'); document.getElementById('configEmail').style.display = 'block'; }
+}
+
+function toast(msg, tipo = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (tipo ? ' ' + tipo : '');
+  setTimeout(() => el.className = 'toast', 2800);
+}
+
+function diasAte(dateStr) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const venc = new Date(dateStr); venc.setHours(0,0,0,0);
+  return Math.round((venc - hoje) / 86400000);
+}
+
+function formatarData(dateStr) {
+  const [y,m,d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function statusClass(dias) {
+  if (dias < 0) return 'vencido';
+  if (dias <= 20) return 'critico';
+  return 'ok';
+}
+
+function statusColor(dias) {
+  if (dias < 0) return 'danger';
+  if (dias <= 20) return 'warn';
+  return 'ok';
+}
+
+function gerarId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+// ===================== TABS =====================
+function showTab(tab, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (el) el.classList.add('active');
+  if (tab === 'exportar') updateExportPreview();
+}
+
+// ===================== TIPO VALIDADE =====================
+function setTipo(tipo) {
+  tipoValidade = tipo;
+  document.getElementById('btnTipoData').classList.toggle('active', tipo === 'data');
+  document.getElementById('btnTipoFab').classList.toggle('active', tipo === 'fabricacao');
+  document.getElementById('secData').classList.toggle('active', tipo === 'data');
+  document.getElementById('secFab').classList.toggle('active', tipo === 'fabricacao');
+}
+
+function setDataMode(mode) {
+  dataMode = mode;
+  document.getElementById('btnDiaCompleto').classList.toggle('active', mode === 'completo');
+  document.getElementById('btnMesAno').classList.toggle('active', mode === 'mesano');
+  document.getElementById('modoCompleto').style.display = mode === 'completo' ? '' : 'none';
+  document.getElementById('modoMesAno').style.display = mode === 'mesano' ? '' : 'none';
+  document.getElementById('previewMesAno').style.display = mode === 'mesano' ? 'block' : 'none';
+}
+
+['fabDia','fabMes','fabAno','mesesVenc'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const d = parseInt(document.getElementById('fabDia').value);
+    const m = parseInt(document.getElementById('fabMes').value);
+    const a = parseInt(document.getElementById('fabAno').value);
+    const meses = parseInt(document.getElementById('mesesVenc').value);
+    const prev = document.getElementById('previewVencimento');
+    if (d && m && a && meses) {
+      const fab = new Date(a, m-1, d);
+      fab.setMonth(fab.getMonth() + meses);
+      prev.style.display = 'block';
+      prev.textContent = `📅 Vencimento calculado: ${String(fab.getDate()).padStart(2,'0')}/${String(fab.getMonth()+1).padStart(2,'0')}/${fab.getFullYear()}`;
+    } else {
+      prev.style.display = 'none';
+    }
+  });
+});
+
+// ===================== ADICIONAR =====================
+function adicionarProduto() {
+  const nome = document.getElementById('nomeProduto').value.trim();
+  const ean  = document.getElementById('codigoEAN').value.trim();
+  const qtd  = document.getElementById('qtdProduto').value.trim();
+
+  if (!nome) { toast('Informe o nome do produto!', 'error'); return; }
+
+  let vencimento = null;
+
+  if (tipoValidade === 'data') {
+    if (dataMode === 'mesano') {
+      const m = parseInt(document.getElementById('vencMesSo').value);
+      const a = parseInt(document.getElementById('vencAnoSo').value);
+      if (!m || !a) { toast('Informe mês e ano!', 'error'); return; }
+      const ultimoDia = new Date(a, m, 0).getDate();
+      vencimento = `${a}-${String(m).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
+    } else {
+      const d = parseInt(document.getElementById('vencDia').value);
+      const m = parseInt(document.getElementById('vencMes').value);
+      const a = parseInt(document.getElementById('vencAno').value);
+      if (!d || !m || !a) { toast('Informe a data completa!', 'error'); return; }
+      if (m < 1 || m > 12) { toast('Mês inválido!', 'error'); return; }
+      if (d < 1 || d > 31) { toast('Dia inválido!', 'error'); return; }
+      vencimento = `${a}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+  } else {
+    const fd = parseInt(document.getElementById('fabDia').value);
+    const fm = parseInt(document.getElementById('fabMes').value);
+    const fa = parseInt(document.getElementById('fabAno').value);
+    const meses = parseInt(document.getElementById('mesesVenc').value);
+    if (!fd || !fm || !fa || !meses) { toast('Preencha fabricação e meses!', 'error'); return; }
+    const fab = new Date(fa, fm-1, fd);
+    fab.setMonth(fab.getMonth() + meses);
+    vencimento = fab.toISOString().split('T')[0];
+  }
+
+  produtos.push({
+    id: gerarId(),
+    nome,
+    ean: ean || '—',
+    vencimento,
+    quantidade: qtd !== '' ? parseInt(qtd) : null,
+    selecionado: false,
+    notif: null // { dias, wa, email }
+  });
+
+  ['nomeProduto','codigoEAN','vencDia','vencMes','vencAno','fabDia','fabMes',
+   'fabAno','mesesVenc','qtdProduto','vencMesSo','vencAnoSo'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('previewVencimento').style.display = 'none';
+
+  salvar();
+  toast('✅ Produto adicionado!');
+}
+
+// ===================== LISTA =====================
+function setSort(mode) {
+  sortMode = mode;
+  document.querySelectorAll('[id^="sort-"]').forEach(el => el.classList.remove('active'));
+  document.getElementById('sort-' + mode).classList.add('active');
+  renderLista();
+}
+
+function setFilter(mode) {
+  filterMode = mode;
+  document.querySelectorAll('[id^="filter-"]').forEach(el => el.classList.remove('active'));
+  document.getElementById('filter-' + mode).classList.add('active');
+  renderLista();
+}
+
+function toggleAll(cb) {
+  const visibleIds = getVisibleProdutos().map(p => p.id);
+  visibleIds.forEach(id => {
+    const p = produtos.find(x => x.id === id);
+    if (p) p.selecionado = cb.checked;
+  });
+  salvar();
+}
+
+function toggleSelect(id) {
+  const p = produtos.find(x => x.id === id);
+  if (p) { p.selecionado = !p.selecionado; salvar(); }
+}
+
+function deletar(id) {
+  if (!confirm('Remover este produto?')) return;
+  produtos = produtos.filter(p => p.id !== id);
+  salvar();
+  toast('🗑️ Produto removido');
+}
+
+function atualizarQtd(id, valor) {
+  const p = produtos.find(x => x.id === id);
+  if (!p) return;
+  p.quantidade = valor === '' ? null : parseInt(valor);
+  salvar();
+}
+
+function getVisibleProdutos() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let lista = [...produtos];
+  if (q) lista = lista.filter(p => p.nome.toLowerCase().includes(q) || p.ean.toLowerCase().includes(q));
+  if (filterMode === 'vencidos') lista = lista.filter(p => diasAte(p.vencimento) < 0);
+  else if (filterMode === 'criticos') lista = lista.filter(p => { const d = diasAte(p.vencimento); return d >= 0 && d <= 20; });
+  else if (filterMode === 'ok') lista = lista.filter(p => diasAte(p.vencimento) > 20);
+  if (sortMode === 'validade') lista.sort((a,b) => a.vencimento.localeCompare(b.vencimento));
+  else lista.sort((a,b) => a.nome.localeCompare(b.nome));
+  return lista;
+}
+
+function updateSummary() {
+  document.getElementById('sumVencido').textContent = produtos.filter(p => diasAte(p.vencimento) < 0).length;
+  document.getElementById('sumCritico').textContent = produtos.filter(p => { const d = diasAte(p.vencimento); return d >= 0 && d <= 20; }).length;
+  document.getElementById('sumOk').textContent      = produtos.filter(p => diasAte(p.vencimento) > 20).length;
+}
+
+function renderLista() {
+  const lista = getVisibleProdutos();
+  const sel = produtos.filter(p => p.selecionado).length;
+  document.getElementById('selCount').textContent = sel + ' selecionados';
+  document.getElementById('checkAll').checked = lista.length > 0 && lista.every(p => p.selecionado);
+
+  const container = document.getElementById('productList');
+
+  if (lista.length === 0) {
+    container.innerHTML = `<div class="empty"><span class="emoji">📭</span><p>Nenhum produto encontrado</p><small>Cadastre produtos ou ajuste o filtro</small></div>`;
+    return;
+  }
+
+  container.innerHTML = lista.map(p => {
+    const dias = diasAte(p.vencimento);
+    const cls  = statusClass(dias);
+    const cor  = statusColor(dias);
+    const diasLabel = dias < 0
+      ? `<span class="value danger">VENCIDO há ${Math.abs(dias)}d</span>`
+      : dias === 0
+        ? `<span class="value danger">VENCE HOJE</span>`
+        : `<span class="value ${cor}">${dias} dias</span>`;
+
+    const notifBadge = p.notif
+      ? `<div class="notif-badge">🔔 alerta: ${p.notif.dias}d antes</div>`
+      : '';
+
+    return `
+    <div class="product-card ${cls} ${p.selecionado ? 'selected' : ''}">
+      <div class="card-header">
+        <div class="card-check" onclick="toggleSelect('${p.id}')"></div>
+        <div class="card-info">
+          <div class="card-name">${p.nome}</div>
+          <div class="card-ean">EAN: ${p.ean}</div>
+          ${notifBadge}
+        </div>
+        <div class="card-actions">
+          <button class="card-btn" onclick="openNotifModal('${p.id}')" title="Configurar notificação">🔔</button>
+          <button class="card-btn del" onclick="deletar('${p.id}')">🗑</button>
+        </div>
+      </div>
+      <div class="card-stats">
+        <div class="stat-box">
+          <div class="label">Validade</div>
+          <div class="value">${formatarData(p.vencimento)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Faltam</div>
+          ${diasLabel}
+        </div>
+        <div class="stat-box">
+          <div class="label">Qtd</div>
+          <input type="number" class="qty-input"
+            value="${p.quantidade !== null && p.quantidade !== undefined ? p.quantidade : ''}"
+            placeholder="—" min="0" inputmode="numeric"
+            onchange="atualizarQtd('${p.id}', this.value)"
+            onclick="event.stopPropagation()">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateExportCount();
+}
+
+function updateExportCount() {
+  const n = produtos.filter(p => p.selecionado).length;
+  const el = document.getElementById('exportSelCount');
+  if (el) el.innerHTML = `<strong>${n} produto(s)</strong> selecionado(s).`;
+}
+
+// ===================== NOTIFICAÇÕES POR PRODUTO =====================
+function openNotifModal(id) {
+  const p = produtos.find(x => x.id === id);
+  if (!p) return;
+  notifEditId = id;
+  document.getElementById('notifProdName').textContent = p.nome;
+  document.getElementById('notifDias').value  = p.notif ? p.notif.dias  : (configs.diasPadrao || 2);
+  document.getElementById('notifWA').value    = p.notif ? (p.notif.wa || '') : '';
+  document.getElementById('notifEmail').value = p.notif ? (p.notif.email || '') : '';
+  document.getElementById('notifModal').classList.add('open');
+}
+
+function closeNotifModal() {
+  document.getElementById('notifModal').classList.remove('open');
+  notifEditId = null;
+}
+
+function salvarNotifProduto() {
+  const p = produtos.find(x => x.id === notifEditId);
+  if (!p) return;
+  const dias  = parseInt(document.getElementById('notifDias').value) || 2;
+  const wa    = document.getElementById('notifWA').value.trim();
+  const email = document.getElementById('notifEmail').value.trim();
+  p.notif = { dias, wa: wa || null, email: email || null };
+  salvar();
+  closeNotifModal();
+  toast('🔔 Notificação configurada!');
+}
+
+function removerNotifProduto() {
+  const p = produtos.find(x => x.id === notifEditId);
+  if (!p) return;
+  p.notif = null;
+  salvar();
+  closeNotifModal();
+  toast('Notificação removida');
+}
+
+// ===================== ENVIAR NOTIFICAÇÕES =====================
+function enviarNotificacoes() {
+  // Verifica produtos com notificação configurada E cujo prazo foi atingido
+  // + todos os produtos que chegaram ao limiar global
+
+  const diasGlobal = configs.diasPadrao || 3;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  // Produtos com notificação individual
+  const individuais = produtos.filter(p => {
+    if (!p.notif) return false;
+    const d = diasAte(p.vencimento);
+    return d >= 0 && d <= p.notif.dias;
+  });
+
+  // Produtos sem notif individual mas dentro do limiar global
+  const globais = produtos.filter(p => {
+    if (p.notif) return false; // já coberto individualmente
+    const d = diasAte(p.vencimento);
+    return d >= 0 && d <= diasGlobal;
+  });
+
+  const todos = [...individuais, ...globais];
+  const vencidos = produtos.filter(p => diasAte(p.vencimento) < 0);
+
+  if (todos.length === 0 && vencidos.length === 0) {
+    toast('✅ Nenhum alerta no momento!');
+    return;
+  }
+
+  const linhas = ['🥐 *PADARIA — ALERTAS DE VALIDADE*', `_${new Date().toLocaleDateString('pt-BR')}_`, ''];
+
+  if (vencidos.length > 0) {
+    linhas.push('⛔ *VENCIDOS:*');
+    vencidos.forEach(p => linhas.push(`  • ${p.nome} — venceu em ${formatarData(p.vencimento)}`));
+    linhas.push('');
+  }
+
+  if (todos.length > 0) {
+    linhas.push('⚠️ *PRÓXIMOS DO VENCIMENTO:*');
+    todos.forEach(p => {
+      const d = diasAte(p.vencimento);
+      const qtdTxt = p.quantidade != null ? ` (Qtd: ${p.quantidade})` : '';
+      const label = d === 0 ? 'VENCE HOJE' : `vence em ${d} dia(s)`;
+      linhas.push(`  • ${p.nome}${qtdTxt} — ${label} (${formatarData(p.vencimento)})`);
+    });
+  }
+
+  const texto = linhas.join('\n');
+
+  // Coleta destinos únicos
+  const waDestinos = new Set();
+  const emailDestinos = new Set();
+
+  if (configs.waOn && configs.waNumber) waDestinos.add(configs.waNumber);
+  if (configs.emailOn && configs.emailAddr) emailDestinos.add(configs.emailAddr);
+
+  individuais.forEach(p => {
+    if (p.notif.wa) waDestinos.add(p.notif.wa);
+    if (p.notif.email) emailDestinos.add(p.notif.email);
+  });
+
+  let enviou = false;
+
+  waDestinos.forEach(num => {
+    const url = `https://wa.me/${num}?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank');
+    enviou = true;
+  });
+
+  emailDestinos.forEach(addr => {
+    const assunto = encodeURIComponent('🥐 Padaria — Alertas de Validade');
+    const corpo   = encodeURIComponent(texto.replace(/\*/g, '').replace(/_/g, ''));
+    window.open(`mailto:${addr}?subject=${assunto}&body=${corpo}`, '_blank');
+    enviou = true;
+  });
+
+  if (!enviou) {
+    toast('Configure WhatsApp ou e-mail primeiro!', 'error');
+  } else {
+    toast('📣 Alertas enviados!');
+  }
+}
+
+// ===================== TOGGLE CONFIG =====================
+function toggleConfig(tipo) {
+  const btn = document.getElementById(tipo === 'wa' ? 'toggleWA' : 'toggleEmail');
+  const div = document.getElementById(tipo === 'wa' ? 'configWA' : 'configEmail');
+  const on  = btn.classList.toggle('on');
+  div.style.display = on ? 'block' : 'none';
+}
+
+// ===================== BACKUP =====================
+function exportarBackup() {
+  const backup = { produtos, configs, exportadoEm: new Date().toISOString() };
+  const blob   = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement('a');
+  a.href       = url;
+  a.download   = `padaria_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('⬇️ Backup baixado!');
+}
+
+function importarBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.produtos || !Array.isArray(data.produtos)) {
+        toast('Arquivo inválido!', 'error'); return;
+      }
+      if (!confirm(`Restaurar ${data.produtos.length} produto(s)? Os dados atuais serão substituídos.`)) return;
+      produtos = data.produtos;
+      configs  = data.configs || {};
+      localStorage.setItem('padaria_produtos', JSON.stringify(produtos));
+      localStorage.setItem('padaria_configs',  JSON.stringify(configs));
+      carregarConfigs();
+      salvar();
+      toast(`✅ ${produtos.length} produto(s) restaurados!`);
+    } catch {
+      toast('Erro ao ler o arquivo!', 'error');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function limparTudo() {
+  if (!confirm('Apagar TODOS os produtos? Esta ação não pode ser desfeita.')) return;
+  if (!confirm('Tem certeza? Todos os dados serão perdidos.')) return;
+  produtos = [];
+  localStorage.removeItem('padaria_produtos');
+  salvar();
+  toast('🗑️ Dados apagados');
+}
+
+// ===================== EXPORT =====================
+function getSelecionados() { return produtos.filter(p => p.selecionado); }
+
+function updateExportPreview() {
+  const sels = getSelecionados();
+  const prev = document.getElementById('exportPreview');
+  prev.textContent = sels.length === 0 ? 'Nenhum produto selecionado.' : gerarTextoTabela(sels);
+  updateExportCount();
+}
+
+function gerarTextoTabela(lista) {
+  const linhas = ['COD | PRODUTO | VALIDADE | QTD | FALTAM', '─'.repeat(55)];
+  lista.forEach(p => {
+    const dias    = diasAte(p.vencimento);
+    const diasTxt = dias < 0 ? `VENCIDO (${Math.abs(dias)}d)` : dias === 0 ? 'HOJE' : `${dias} dias`;
+    const qtdTxt  = p.quantidade != null ? p.quantidade : '—';
+    linhas.push(`${p.ean} | ${p.nome} | ${formatarData(p.vencimento)} | ${qtdTxt} | ${diasTxt}`);
+  });
+  return linhas.join('\n');
+}
+
+function exportarExcel() {
+  const sels = getSelecionados();
+  if (sels.length === 0) { toast('Selecione ao menos um produto!', 'error'); return; }
+  const data = sels.map(p => {
+    const dias = diasAte(p.vencimento);
+    return {
+      'COD (EAN)': p.ean,
+      'Produto': p.nome,
+      'Validade': formatarData(p.vencimento),
+      'Quantidade': p.quantidade != null ? p.quantidade : '',
+      'Faltam (dias)': dias < 0 ? `VENCIDO há ${Math.abs(dias)} dias` : dias === 0 ? 'VENCE HOJE' : dias,
+      'Status': dias < 0 ? 'VENCIDO' : dias <= 20 ? 'CRÍTICO' : 'OK'
+    };
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch:16 },{ wch:32 },{ wch:14 },{ wch:10 },{ wch:18 },{ wch:10 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Validades');
+  XLSX.writeFile(wb, `padaria_validades_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('📊 Excel exportado!');
+}
+
+function exportarWhatsApp() {
+  const sels = getSelecionados();
+  if (sels.length === 0) { toast('Selecione ao menos um produto!', 'error'); return; }
+  const linhas = ['*🥐 PADARIA — CONTROLE DE VALIDADES*', `_Data: ${new Date().toLocaleDateString('pt-BR')}_`, ''];
+  linhas.push('*COD EAN | PRODUTO | VALIDADE | QTD | FALTAM*');
+  linhas.push('━'.repeat(38));
+  sels.forEach(p => {
+    const dias    = diasAte(p.vencimento);
+    const diasTxt = dias < 0 ? `⛔ VENCIDO (${Math.abs(dias)}d)` : dias === 0 ? '⚠️ HOJE' : dias <= 20 ? `🟠 ${dias}d` : `✅ ${dias}d`;
+    const qtdTxt  = p.quantidade != null ? p.quantidade : '—';
+    linhas.push(`${p.ean} | ${p.nome} | ${formatarData(p.vencimento)} | ${qtdTxt} | ${diasTxt}`);
+  });
+  linhas.push('');
+  linhas.push(`_Total: ${sels.length} produto(s)_`);
+  window.open(`https://wa.me/?text=${encodeURIComponent(linhas.join('\n'))}`, '_blank');
+}
+
+function exportarTexto() {
+  const sels = getSelecionados();
+  if (sels.length === 0) { toast('Selecione ao menos um produto!', 'error'); return; }
+  const texto = gerarTextoTabela(sels);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(texto).then(() => toast('📋 Texto copiado!')).catch(() => fallbackCopy(texto));
+  } else { fallbackCopy(texto); }
+}
+
+function fallbackCopy(texto) {
+  const ta = document.createElement('textarea');
+  ta.value = texto; document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  toast('📋 Texto copiado!');
+}
+
+// ===================== CÂMERA (ZXing) =====================
+async function openCamera() {
+  const modal = document.getElementById('cameraModal');
+  modal.classList.add('open');
+  try {
+    if (typeof ZXing === 'undefined') throw new Error('ZXing não carregado');
+    zxingReader = new ZXing.BrowserMultiFormatReader();
+    const devices = await zxingReader.listVideoInputDevices();
+    let deviceId = undefined;
+    if (devices.length > 0) {
+      const rear = devices.find(d => /back|rear|environment|traseira/i.test(d.label));
+      deviceId = rear ? rear.deviceId : devices[devices.length - 1].deviceId;
+    }
+    const video = document.getElementById('video');
+    await zxingReader.decodeFromVideoDevice(deviceId, video, (result) => {
+      if (result) handleScannedCode(result.getText());
+    });
+  } catch(e) {
+    toast('Câmera indisponível. Use "Digitar EAN".', 'error');
+    closeCamera();
+  }
+}
+
+function handleScannedCode(code) {
+  document.getElementById('codigoEAN').value = code;
+  closeCamera();
+  toast('📷 Código lido: ' + code);
+}
+
+function closeCamera() {
+  if (zxingReader) { try { zxingReader.reset(); } catch(e){} zxingReader = null; }
+  if (videoStream)  { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+  document.getElementById('cameraModal').classList.remove('open');
+  document.getElementById('video').srcObject = null;
+}
+
+function digitarManual() {
+  closeCamera();
+  setTimeout(() => {
+    const ean = prompt('Digite o código EAN:');
+    if (ean && ean.trim()) { document.getElementById('codigoEAN').value = ean.trim(); toast('EAN inserido'); }
+  }, 300);
+}
+
+// ===================== VERIFICAÇÃO AUTOMÁTICA DE ALERTAS =====================
+function verificarAlertasAutomaticos() {
+  // Roda ao abrir o app e verifica se há produtos que atingiram o prazo de notificação
+  const alertas = produtos.filter(p => {
+    if (!p.notif) return false;
+    const d = diasAte(p.vencimento);
+    return d >= 0 && d <= p.notif.dias;
+  });
+
+  if (alertas.length > 0) {
+    const nomes = alertas.map(p => p.nome).join(', ');
+    toast(`🔔 ${alertas.length} produto(s) perto do vencimento!`, 'info');
+  }
+}
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', () => {
+  carregarConfigs();
+  updateSummary();
+  renderLista();
+  document.getElementById('totalCount').textContent = produtos.length;
+  setTimeout(verificarAlertasAutomaticos, 1000);
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCamera(); closeNotifModal(); } });
+</script>
+</body>
+</html>
